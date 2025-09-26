@@ -1,375 +1,355 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Call Break - Point Calculator</title>
-    <!-- Tailwind CSS CDN -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Break Scoreboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React and ReactDOM -->
-    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
-    <!-- Font Awesome for icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet" />
-    <!-- Inter font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Inter', system-ui, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
         }
-        /* Animations */
-        @keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); opacity: 1; } 70% { transform: scale(0.9); } 100% { transform: scale(1); } }
-        .animate-bounceIn { animation: bounceIn 0.6s ease-out; }
-        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
-        
-        /* Custom Styles */
-        .header-gradient { background: linear-gradient(90deg, #1e3a8a, #312e81); }
-        .gradient-button { background: linear-gradient(45deg, #22c55e, #16a34a); transition: transform .2s, box-shadow .2s; }
-        .gradient-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4); }
-        .gradient-button:disabled { background: #9ca3af; cursor: not-allowed; opacity: 0.7; }
-        .table-header-sticky { position: sticky; left: 0; z-index: 10; }
-        .leader-row { background-color: #fef9c3; }
-        .dark .leader-row { background-color: #4a411c; }
-        .leader-cell { background-color: #fef9c3; }
-        .dark .leader-cell { background-color: #4a411c; }
-        
-        .overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,.7); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 1rem; backdrop-filter: blur(4px); }
-        .modal-box { background: white; padding: 2rem; border-radius: .75rem; box-shadow: 0 10px 25px rgba(0,0,0,.3); max-width: 90%; width: 500px; animation: bounceIn .4s ease-out; }
-        .dark .modal-box { background-color: #1f2937; color: #e5e7eb; }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f0f;
+            animation: confetti-fall 5s linear forwards;
+            opacity: 0;
+            border-radius: 50%;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
-    <div id="root"></div>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
 
-    <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
+    <div id="game-container" class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-6 md:p-10">
+        <h1 class="text-3xl md:text-5xl font-extrabold text-slate-800 text-center mb-2">Call Break Scoreboard</h1>
+        <p class="text-center text-slate-500 mb-8" id="round-indicator">Round 1 of 5</p>
 
-        const TOTAL_ROUNDS = 5;
+        <!-- Player Setup Section -->
+        <div id="player-setup" class="mb-8 p-6 bg-slate-50 rounded-2xl">
+            <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                <label for="player-count" class="text-lg text-slate-700 font-semibold mb-2 md:mb-0">Number of Players:</label>
+                <input type="number" id="player-count" min="2" max="4" value="4" class="p-3 rounded-xl border-2 border-slate-300 w-full md:w-32 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" />
+            </div>
+            <div id="player-name-inputs" class="space-y-4">
+                <!-- Name inputs will be dynamically generated here -->
+            </div>
+            <button id="start-game-btn" class="mt-6 w-full px-6 py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105">
+                Start Game
+            </button>
+        </div>
+        
+        <!-- Game Play Section -->
+        <div id="game-play" class="hidden">
+            <!-- Current Round Input Section -->
+            <div id="current-round-inputs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Player input cards will be dynamically generated here -->
+            </div>
 
-        // Helper function to create initial state
-        const createInitialState = () => ({
-            players: Array(4).fill(null).map((_, i) => ({
-                name: `Player ${i + 1}`,
-                scores: Array(TOTAL_ROUNDS).fill(null),
-                overtricks: 0
-            })),
-            round: 1,
-            calls: { 0: '', 1: '', 2: '', 3: '' },
-            tricks: { 0: '', 1: '', 2: '', 3: '' },
-            error: '',
-            gameEnded: false,
-        });
+            <!-- Game Controls -->
+            <div class="mt-8 flex flex-col md:flex-row gap-4">
+                <button id="calculate-btn" class="w-full px-8 py-4 bg-purple-500 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-purple-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300">
+                    Calculate Scores
+                </button>
+                <button id="next-round-btn" class="w-full px-8 py-4 bg-green-500 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300">
+                    Next Round
+                </button>
+            </div>
 
-        // Main App Component
-        const App = () => {
-            const [gameState, setGameState] = useState(createInitialState());
-            const [showRules, setShowRules] = useState(false);
-            const [darkMode, setDarkMode] = useState(false);
-            const [isEditingNames, setIsEditingNames] = useState(false);
+            <!-- Scoreboard -->
+            <div class="mt-12 p-6 bg-slate-50 rounded-2xl shadow-inner">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">Scoreboard</h2>
+                <div id="scoreboard-container" class="overflow-x-auto">
+                    <!-- Scoreboard table will be generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
 
-            useEffect(() => {
-                const isDark = localStorage.getItem('darkMode') === 'true';
-                setDarkMode(isDark);
-                document.documentElement.classList.toggle('dark', isDark);
-            }, []);
+    <!-- Winner Announcement Modal -->
+    <div id="winner-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl text-center max-w-lg w-full transform transition-transform duration-500 scale-95 md:scale-100">
+            <h2 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 mb-4 animate-bounce">
+                We Have a Winner!
+            </h2>
+            <p class="text-3xl md:text-4xl font-bold text-slate-800 mb-6" id="winner-name"></p>
+            <button id="new-game-btn" class="px-8 py-4 bg-green-500 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-green-600 transition-all duration-200 transform hover:scale-105">
+                Start New Game
+            </button>
+        </div>
+    </div>
 
-            const toggleDarkMode = () => {
-                const newDarkMode = !darkMode;
-                setDarkMode(newDarkMode);
-                localStorage.setItem('darkMode', newDarkMode);
-                document.documentElement.classList.toggle('dark', newDarkMode);
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const playerCountInput = document.getElementById('player-count');
+            const playerNameInputsContainer = document.getElementById('player-name-inputs');
+            const startGameBtn = document.getElementById('start-game-btn');
+            const playerSetupSection = document.getElementById('player-setup');
+            const gamePlaySection = document.getElementById('game-play');
+            const roundIndicator = document.getElementById('round-indicator');
+            const currentRoundInputsContainer = document.getElementById('current-round-inputs');
+            const calculateBtn = document.getElementById('calculate-btn');
+            const nextRoundBtn = document.getElementById('next-round-btn');
+            const scoreboardContainer = document.getElementById('scoreboard-container');
+            const winnerModal = document.getElementById('winner-modal');
+            const winnerNameDisplay = document.getElementById('winner-name');
+            const newGameBtn = document.getElementById('new-game-btn');
+
+            let players = [];
+            let currentRound = 1;
+            const TOTAL_ROUNDS = 5;
+
+            const rules = {
+                overtrickBonus: 0.1,
             };
+            
+            // Custom alert function to avoid window.alert()
+            function alert(message) {
+                const existingAlert = document.getElementById('custom-alert');
+                if (existingAlert) {
+                    existingAlert.remove();
+                }
 
-            const handlePlayerNameChange = (index, newName) => {
-                setGameState(prev => {
-                    const newPlayers = [...prev.players];
-                    newPlayers[index].name = newName;
-                    return { ...prev, players: newPlayers };
-                });
-            };
+                const alertDiv = document.createElement('div');
+                alertDiv.id = 'custom-alert';
+                alertDiv.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-xl shadow-lg z-50 text-center transition-opacity duration-300 opacity-100';
+                alertDiv.textContent = message;
 
-            const handleInputChange = (type, index, value) => {
-                // Allow only digits or empty string
-                if (!/^\d*$/.test(value)) return;
+                document.body.appendChild(alertDiv);
 
-                const max = type === 'calls' ? 8 : 13;
-                const num = value === '' ? '' : Math.min(parseInt(value, 10), max);
+                setTimeout(() => {
+                    alertDiv.classList.add('opacity-0');
+                    setTimeout(() => alertDiv.remove(), 300);
+                }, 4000);
+            }
 
-                setGameState(prev => ({
-                    ...prev,
-                    [type]: { ...prev[type], [index]: num }
-                }));
-            };
+            // Function to generate player name inputs
+            function generatePlayerNameInputs() {
+                const playerCount = parseInt(playerCountInput.value, 10);
+                if (isNaN(playerCount) || playerCount < 2 || playerCount > 4) {
+                    alert('Please enter a valid number of players (2-4).');
+                    return;
+                }
+                playerNameInputsContainer.innerHTML = '';
+                for (let i = 1; i <= playerCount; i++) {
+                    const inputGroup = document.createElement('div');
+                    inputGroup.className = 'flex items-center';
+                    inputGroup.innerHTML = `
+                        <label for="player-name-${i}" class="text-sm font-medium text-slate-700 w-24">Player ${i}:</label>
+                        <input type="text" id="player-name-${i}" placeholder="Enter name..." value="Player ${i}" class="flex-1 p-3 rounded-lg border-2 border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors">
+                    `;
+                    playerNameInputsContainer.appendChild(inputGroup);
+                }
+            }
 
-            const handleCalculateRound = () => {
-                setGameState(prev => ({ ...prev, error: '' }));
-
-                const { players, calls, tricks, round } = gameState;
-                
-                const trickValues = Object.values(tricks).map(t => parseInt(t, 10) || 0);
-                const totalTricks = trickValues.reduce((sum, t) => sum + t, 0);
-
-                if (totalTricks !== 13) {
-                    setGameState(prev => ({ ...prev, error: `Total tricks must be 13. You have entered ${totalTricks}.` }));
+            // Function to start the game
+            function startGame() {
+                const playerCount = parseInt(playerCountInput.value, 10);
+                if (isNaN(playerCount) || playerCount < 2 || playerCount > 4) {
+                    alert('Please enter a valid number of players (2-4).');
                     return;
                 }
 
-                // Calculate scores for the current round
-                const updatedPlayers = players.map((player, index) => {
-                    const newPlayer = JSON.parse(JSON.stringify(player)); // Deep copy
-                    const call = parseInt(calls[index], 10);
-                    const trick = parseInt(tricks[index], 10);
-                    let roundScore = 0;
+                players = [];
+                for (let i = 1; i <= playerCount; i++) {
+                    const nameInput = document.getElementById(`player-name-${i}`);
+                    const name = nameInput.value.trim() || `Player ${i}`;
+                    players.push({
+                        name: name,
+                        totalScore: 0,
+                        roundScores: []
+                    });
+                }
+                currentRound = 1;
+                playerSetupSection.classList.add('hidden');
+                gamePlaySection.classList.remove('hidden');
+                roundIndicator.textContent = `Round ${currentRound} of ${TOTAL_ROUNDS}`;
+                renderCurrentRoundInputs();
+                renderScoreboard();
+            }
 
-                    // Successful call
-                    if (trick >= call) {
-                        // Bonus for calling 8 and winning exactly 8
-                        if (call === 8 && trick === 8) {
-                            roundScore = 13;
-                        } else {
-                            roundScore = call;
-                        }
-                        newPlayer.overtricks += (trick - call);
-                    } 
-                    // Failed call (Break)
-                    else {
-                        roundScore = -call;
+            // Function to render inputs for the current round
+            function renderCurrentRoundInputs() {
+                currentRoundInputsContainer.innerHTML = '';
+                players.forEach((player, index) => {
+                    const playerCard = document.createElement('div');
+                    playerCard.className = 'player-card bg-white p-6 rounded-2xl shadow-md border border-slate-200';
+                    playerCard.innerHTML = `
+                        <h2 class="text-xl font-bold text-slate-800 text-center mb-4">${player.name}</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="call-${index}" class="text-sm text-slate-600 font-medium block mb-1">Call (Tricks Bid):</label>
+                                <input type="number" id="call-${index}" min="0" max="13" value="0" class="w-full p-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            </div>
+                            <div>
+                                <label for="hands-${index}" class="text-sm text-slate-600 font-medium block mb-1">Hands Won (Tricks Taken):</label>
+                                <input type="number" id="hands-${index}" min="0" max="13" value="0" class="w-full p-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-400">
+                            </div>
+                        </div>
+                        <div class="mt-4 text-center">
+                            <span id="score-${index}" class="text-2xl font-bold text-slate-800">0.0</span>
+                            <span class="text-sm text-slate-500 block">points</span>
+                        </div>
+                    `;
+                    currentRoundInputsContainer.appendChild(playerCard);
+                });
+            }
+
+            // Function to calculate and display scores for the current round
+            function calculateCurrentScores() {
+                players.forEach((player, index) => {
+                    const callInput = document.getElementById(`call-${index}`);
+                    const handsInput = document.getElementById(`hands-${index}`);
+                    const scoreSpan = document.getElementById(`score-${index}`);
+
+                    const call = parseInt(callInput.value, 10);
+                    const hands = parseInt(handsInput.value, 10);
+
+                    if (isNaN(call) || isNaN(hands) || call < 0 || hands < 0) {
+                        scoreSpan.textContent = 'Error';
+                        scoreSpan.className = 'text-2xl font-bold text-red-500';
+                        return;
                     }
 
-                    newPlayer.scores[round - 1] = roundScore;
-                    return newPlayer;
+                    let score = 0;
+                    if (hands >= call) {
+                        score = call + (hands - call) * rules.overtrickBonus;
+                        scoreSpan.className = 'text-2xl font-bold text-green-600';
+                    } else {
+                        score = -call;
+                        scoreSpan.className = 'text-2xl font-bold text-red-500';
+                    }
+                    scoreSpan.textContent = score.toFixed(1);
                 });
-                
-                setGameState(prev => ({
-                    ...prev,
-                    players: updatedPlayers,
-                    round: prev.round < TOTAL_ROUNDS ? prev.round + 1 : prev.round,
-                    gameEnded: prev.round >= TOTAL_ROUNDS,
-                    calls: { 0: '', 1: '', 2: '', 3: '' },
-                    tricks: { 0: '', 1: '', 2: '', 3: '' },
-                }));
-            };
-            
-            const handleNewGame = () => {
-                setGameState(createInitialState());
-                setIsEditingNames(false);
-            };
+            }
 
-            const playerTotals = useMemo(() => {
-                return gameState.players.map(p => {
-                    const baseScore = p.scores.reduce((sum, score) => sum + (score || 0), 0);
-                    const total = baseScore + (p.overtricks * 0.1);
-                    return parseFloat(total.toFixed(1));
+            // Function to update the scoreboard with the scores of the round
+            function nextRound() {
+                let handsSum = 0;
+                let hasError = false;
+
+                players.forEach((player, index) => {
+                    const callInput = document.getElementById(`call-${index}`);
+                    const handsInput = document.getElementById(`hands-${index}`);
+
+                    const call = parseInt(callInput.value, 10);
+                    const hands = parseInt(handsInput.value, 10);
+
+                    if (isNaN(call) || isNaN(hands) || call < 0 || hands < 0) {
+                         alert('Please fill in valid numbers for all players.');
+                         hasError = true;
+                         return;
+                    }
+                    handsSum += hands;
+                    
+                    let score = 0;
+                    if (hands >= call) {
+                        score = call + (hands - call) * rules.overtrickBonus;
+                    } else {
+                        score = -call;
+                    }
+
+                    player.totalScore += score;
+                    player.roundScores.push({ call, hands, score });
                 });
-            }, [gameState.players]);
 
-            const winner = useMemo(() => {
-                if (!gameState.gameEnded) return null;
-                const maxScore = Math.max(...playerTotals);
-                const winnerIndex = playerTotals.findIndex(score => score === maxScore);
-                return { name: gameState.players[winnerIndex].name, score: maxScore };
-            }, [gameState.gameEnded, playerTotals, gameState.players]);
-            
-            const currentLeaderIndex = useMemo(() => {
-                if(playerTotals.every(score => score === 0)) return -1;
-                const maxScore = Math.max(...playerTotals);
-                return playerTotals.indexOf(maxScore);
-            }, [playerTotals]);
+                if (hasError) return;
 
-            const currentTricksTotal = useMemo(() => {
-                return Object.values(gameState.tricks).reduce((sum, t) => sum + (parseInt(t, 10) || 0), 0);
-            }, [gameState.tricks]);
+                if (handsSum > 13) {
+                    alert(`The sum of hands won (${handsSum}) cannot be more than 13.`);
+                    // Remove the last added scores to prevent adding invalid data
+                    players.forEach(player => player.roundScores.pop());
+                    return;
+                }
 
-            const isCalculationDisabled = 
-                Object.values(gameState.calls).some(c => c === '') || 
-                currentTricksTotal !== 13;
-                
-            // ===== RENDER SUB-COMPONENTS =====
+                renderScoreboard();
 
-            const Header = () => (
-                <header className="header-gradient text-white p-4 shadow-lg">
-                    <div className="container mx-auto flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <i className="fas fa-calculator text-3xl"></i>
-                            <div>
-                                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Call Break Calculator</h1>
-                                <p className="text-xs text-white/80 -mt-1">Professional Rules</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <button onClick={handleNewGame} className="hidden sm:inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-all duration-300">
-                                <i className="fas fa-redo"></i> New Game
-                            </button>
-                            <button onClick={toggleDarkMode} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Toggle dark mode">
-                                {darkMode ? <i className="fas fa-sun text-yellow-400"></i> : <i className="fas fa-moon text-gray-600"></i>}
-                            </button>
-                        </div>
-                    </div>
-                </header>
-            );
+                if (currentRound < TOTAL_ROUNDS) {
+                    currentRound++;
+                    roundIndicator.textContent = `Round ${currentRound} of ${TOTAL_ROUNDS}`;
+                    renderCurrentRoundInputs();
+                } else {
+                    announceWinner();
+                }
+            }
 
-            const Scoreboard = () => (
-                <div className="overflow-x-auto shadow-xl rounded-lg bg-white dark:bg-gray-800">
-                    <table className="w-full text-sm sm:text-base text-left">
-                        <thead className="bg-gray-50 dark:bg-gray-700/50">
+            // Function to render the scoreboard table
+            function renderScoreboard() {
+                let tableHTML = `
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-100">
                             <tr>
-                                <th className="p-3 sm:p-4 font-semibold text-gray-600 dark:text-gray-300 w-2/5 md:w-1/4 table-header-sticky bg-gray-50 dark:bg-gray-700/50">
-                                    <div className="flex items-center justify-between">
-                                        <span>Player</span>
-                                        <button onClick={() => setIsEditingNames(!isEditingNames)} className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
-                                            {isEditingNames ? 'Save' : 'Edit'}
-                                        </button>
-                                    </div>
-                                </th>
-                                {[...Array(TOTAL_ROUNDS)].map((_, i) => (
-                                    <th key={i} className="p-3 sm:p-4 font-semibold text-center text-gray-600 dark:text-gray-300">R{i + 1}</th>
-                                ))}
-                                <th className="p-3 sm:p-4 font-semibold text-center text-gray-600 dark:text-gray-300">Total</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider rounded-tl-lg">Name</th>
+                `;
+                for (let i = 1; i <= currentRound; i++) {
+                    tableHTML += `<th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">R${i}</th>`;
+                }
+                tableHTML += `
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider rounded-tr-lg">Total</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {gameState.players.map((player, index) => (
-                                <tr key={index} className={index === currentLeaderIndex ? 'leader-row' : ''}>
-                                    <td className={`p-2 sm:p-3 font-medium table-header-sticky ${index === currentLeaderIndex ? 'leader-cell' : 'bg-white dark:bg-gray-800'}`}>
-                                        <div className="flex items-center gap-2">
-                                            {index === currentLeaderIndex && <span className="text-yellow-500">🏆</span>}
-                                            {isEditingNames ? (
-                                                <input
-                                                    type="text"
-                                                    value={player.name}
-                                                    onChange={(e) => handlePlayerNameChange(index, e.target.value)}
-                                                    className="w-full bg-transparent font-bold outline-none ring-1 ring-blue-500 rounded px-1"
-                                                />
-                                            ) : (
-                                                <span className="font-bold px-1">{player.name}</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    {player.scores.map((score, i) => (
-                                        <td key={i} className={`p-3 sm:p-4 text-center ${score < 0 ? 'text-red-500 font-semibold' : ''}`}>
-                                            {score !== null ? score : '-'}
-                                        </td>
-                                    ))}
-                                    <td className="p-3 sm:p-4 text-center font-bold text-lg text-indigo-600 dark:text-indigo-400">
-                                        {playerTotals[index]}
-                                    </td>
-                                </tr>
-                            ))}
+                        <tbody class="bg-white divide-y divide-slate-200">
+                `;
+                
+                players.forEach(player => {
+                    tableHTML += `
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">${player.name}</td>
+                    `;
+                    for (let i = 0; i < currentRound; i++) {
+                         let score = player.roundScores[i] ? player.roundScores[i].score.toFixed(1) : '-';
+                         let scoreClass = player.roundScores[i] ? (player.roundScores[i].score >= 0 ? 'text-green-600' : 'text-red-500') : 'text-slate-500';
+                         tableHTML += `<td class="px-4 py-3 whitespace-nowrap text-sm text-center font-bold ${scoreClass}">${score}</td>`;
+                    }
+                    tableHTML += `
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-slate-900">${player.totalScore.toFixed(1)}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += `
                         </tbody>
                     </table>
-                </div>
-            );
-            
-            const InputSection = () => (
-                <div className="mt-8 animate-fadeIn">
-                    <h2 className="text-2xl font-bold text-center mb-4">
-                        Round <span className="text-indigo-600 dark:text-indigo-400">{gameState.round}</span> of {TOTAL_ROUNDS}
-                    </h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                        {gameState.players.map((player, index) => (
-                            <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-                                <h3 className="font-semibold truncate">{player.name}</h3>
-                                <div className="mt-3 space-y-3">
-                                    <input type="number" placeholder="Call" min="1" max="8" value={gameState.calls[index]} onChange={(e) => handleInputChange('calls', index, e.target.value)} className="w-full p-2 text-center border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                                    <input type="number" placeholder="Tricks Won" min="0" max="13" value={gameState.tricks[index]} onChange={(e) => handleInputChange('tricks', index, e.target.value)} className="w-full p-2 text-center border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    <div className="text-center mt-4 font-medium">
-                        <p className={currentTricksTotal !== 13 ? 'text-red-500' : 'text-green-600'}>
-                            Total Tricks Entered: {currentTricksTotal} / 13
-                        </p>
-                        {gameState.error && <p className="text-red-500 mt-1">{gameState.error}</p>}
-                    </div>
+                `;
+                scoreboardContainer.innerHTML = tableHTML;
+            }
 
-                    <div className="mt-6 text-center">
-                        <button onClick={handleCalculateRound} disabled={isCalculationDisabled} className="gradient-button text-white font-bold py-3 px-10 rounded-full shadow-lg text-lg uppercase tracking-wider">
-                            Calculate Round {gameState.round}
-                        </button>
-                    </div>
-                </div>
-            );
+            // Function to announce the winner
+            function announceWinner() {
+                const winner = players.reduce((prev, current) => (prev.totalScore > current.totalScore) ? prev : current);
+                winnerNameDisplay.textContent = winner.name;
+                winnerModal.classList.remove('hidden');
 
-            const GameEndView = () => (
-                 <div className="text-center mt-8 animate-fadeIn">
-                    <h2 className="text-2xl font-bold text-green-600">Game Finished!</h2>
-                    {winner && <p className="text-lg mt-2">Congratulations to <span className="font-bold">{winner.name}</span>!</p>}
-                    <button onClick={handleNewGame} className="mt-6 gradient-button text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg uppercase">
-                        Play Again
-                    </button>
-                 </div>
-            );
+                // Confetti animation
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = `${Math.random() * 100}vw`;
+                    confetti.style.animationDelay = `${Math.random() * 2}s`;
+                    confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                    document.body.appendChild(confetti);
+                }
+            }
 
-            const WinnerModal = () => winner && (
-                <div className="overlay">
-                    <div className="modal-box text-center">
-                        <span className="text-7xl mb-4">🎉</span>
-                        <h2 className="text-3xl font-bold text-yellow-500">Game Over!</h2>
-                        <p className="text-xl mt-4">The winner is</p>
-                        <p className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 my-2">{winner.name}</p>
-                        <p className="text-lg">with a score of <span className="font-bold">{winner.score}</span> points!</p>
-                        <button onClick={handleNewGame} className="mt-8 gradient-button text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg uppercase">
-                            Start New Game
-                        </button>
-                    </div>
-                </div>
-            );
+            // Event listeners
+            playerCountInput.addEventListener('change', generatePlayerNameInputs);
+            startGameBtn.addEventListener('click', startGame);
+            calculateBtn.addEventListener('click', calculateCurrentScores);
+            nextRoundBtn.addEventListener('click', nextRound);
+            newGameBtn.addEventListener('click', () => {
+                location.reload();
+            });
 
-            const RulesModal = () => (
-                <div className="overlay" onClick={() => setShowRules(false)}>
-                    <div className="modal-box text-left" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Scoring Rules</h2>
-                            <button onClick={() => setShowRules(false)} className="text-2xl font-bold opacity-70 hover:opacity-100">&times;</button>
-                        </div>
-                        <ul className="space-y-3 list-disc list-inside text-gray-700 dark:text-gray-300">
-                            <li>The game is played for <strong>5 rounds</strong>.</li>
-                            <li>Total tricks won by all 4 players in a round must equal <strong>13</strong>.</li>
-                            <li><strong>Successful Call:</strong> If `Tricks Won >= Call`, your score for the round equals your `Call`.</li>
-                            <li><strong>Failed Call (Break):</strong> If `Tricks Won < Call`, your score is a negative of your `Call` (e.g., `-3`).</li>
-                            <li><strong>Overtricks:</strong> Each extra trick won above your call adds <strong>+0.1</strong> to your cumulative total score.</li>
-                            <li><strong>Bonus Score:</strong> If you `Call 8` and win exactly `8 tricks`, you get a bonus score of <strong>13 points</strong> for that round.</li>
-                            <li>The player with the <strong>highest total score</strong> after 5 rounds wins the game.</li>
-                        </ul>
-                    </div>
-                </div>
-            );
-
-            // ===== MAIN RENDER =====
-            
-            return (
-                <div>
-                    <Header />
-                    <main className="container mx-auto p-4 md:p-6">
-                        <Scoreboard />
-                        {gameState.gameEnded ? <GameEndView /> : <InputSection />}
-                        
-                        <div className="sm:hidden mt-8 text-center">
-                            <button onClick={handleNewGame} className="bg-gray-200 dark:bg-gray-700 font-semibold py-2 px-4 rounded-lg">
-                                <i className="fas fa-redo mr-2"></i> New Game
-                            </button>
-                        </div>
-
-                        <button onClick={() => setShowRules(true)} className="fixed bottom-4 right-4 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl z-20 hover:bg-blue-700 transition-transform transform hover:scale-110">
-                           <i className="fas fa-info"></i>
-                        </button>
-                    </main>
-                    
-                    {gameState.gameEnded && winner && <WinnerModal />}
-                    {showRules && <RulesModal />}
-                </div>
-            );
-        };
-
-        ReactDOM.render(<App />, document.getElementById('root'));
+            // Initial setup
+            generatePlayerNameInputs();
+        });
     </script>
+
 </body>
 </html>
